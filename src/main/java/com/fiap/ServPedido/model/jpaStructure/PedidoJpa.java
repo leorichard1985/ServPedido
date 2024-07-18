@@ -34,7 +34,7 @@ public class PedidoJpa {
 	public Integer idCliente;
 	
 	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.REFRESH)
-	@JoinColumn(name = "idItemPedido")
+	@JoinColumn(name = "idPedido")
 	public List<PeditoItemJpa> itemPedido;
 	
 

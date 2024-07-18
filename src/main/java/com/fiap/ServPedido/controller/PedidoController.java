@@ -49,7 +49,7 @@ public class PedidoController {
 
 	@GetMapping("/{idPedido}")
 	public CompletableFuture<ResponseEntity<Object>> BuscarPedidoPorId(
-			@PathVariable("idCliente") Integer idPedido) {
+			@PathVariable("idPedido") Integer idPedido) {
 
 		try {
 
