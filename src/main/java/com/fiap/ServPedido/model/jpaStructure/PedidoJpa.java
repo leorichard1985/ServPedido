@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,6 +22,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Data
 @Entity
 @Table(name = "tb_MOV_Pedido")
 public class PedidoJpa {
@@ -35,7 +37,7 @@ public class PedidoJpa {
 	
 	@OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.REFRESH)
 	@JoinColumn(name = "idPedido")
-	public List<PeditoItemJpa> itemPedido;
+	public List<PedidoItemJpa> itemPedido;
 	
 
 }

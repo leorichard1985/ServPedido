@@ -1,4 +1,4 @@
-package com.fiap.ServPedido.integracao;
+package com.fiap.ServPedido.integracao.estoque;
 
 public class ProdutoReqCompra {
 

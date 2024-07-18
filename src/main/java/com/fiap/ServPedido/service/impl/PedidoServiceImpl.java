@@ -1,41 +1,69 @@
 package com.fiap.ServPedido.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
-import com.fiap.ServPedido.integracao.EstoquePedidoProducer;
-import com.fiap.ServPedido.integracao.ProdutoReqCompra;
+import com.fiap.ServPedido.integracao.entrega.EntregaPedidoCliente;
+import com.fiap.ServPedido.integracao.entrega.EntregaPedidoProducer;
+import com.fiap.ServPedido.integracao.estoque.EstoquePedidoProducer;
+import com.fiap.ServPedido.integracao.estoque.ProdutoReqCompra;
+import com.fiap.ServPedido.model.jpaStructure.PedidoItemJpa;
 import com.fiap.ServPedido.model.jpaStructure.PedidoJpa;
+import com.fiap.ServPedido.records.PedidoItemRecords;
 import com.fiap.ServPedido.records.PedidoRecords;
+import com.fiap.ServPedido.repository.PedidoItemRepository;
 import com.fiap.ServPedido.repository.PedidoRepository;
 import com.fiap.ServPedido.service.interfaces.PedidoService;
 
 @Service
 public class PedidoServiceImpl implements PedidoService {
 
-	private PedidoRepository repository;
-	private final EstoquePedidoProducer estoque;
+	private PedidoRepository repositoryPedido;
+	private PedidoItemRepository repositoryItemPedido;
 
-	public PedidoServiceImpl(EstoquePedidoProducer estoque,PedidoRepository repository) {
+	private final EstoquePedidoProducer estoque;
+	private final EntregaPedidoProducer entrega;
+
+	public PedidoServiceImpl(EstoquePedidoProducer estoque, EntregaPedidoProducer entrega,
+			PedidoRepository repositoryPedido, PedidoItemRepository repositoryItemPedido) {
 		this.estoque = estoque;
-		this.repository = repository;
+		this.entrega = entrega;
+		this.repositoryPedido = repositoryPedido;
+		this.repositoryItemPedido = repositoryItemPedido;
 	}
 
 	@Override
 	public PedidoRecords BuscarPedidoPorId(Integer idPedido) {
 
-		Optional<PedidoJpa> optJpa = repository.findById(idPedido);
+		Optional<PedidoJpa> optPedidoJpa = repositoryPedido.findById(idPedido);
 
-		if (optJpa.isEmpty()) {
+		if (optPedidoJpa.isEmpty()) {
 
 			return null;
 
 		} else {
 
-			//return new PedidoRecords(optJpa.get().idPedido, optJpa.get().idCliente, optJpa.get().);
-			return null;
+			List<PedidoItemJpa> lstPedidoItem = repositoryItemPedido.BuscarItemsPedidoPorIdPedido(idPedido);
+			List<PedidoItemRecords> ItensRecords = new ArrayList<>();
+
+			if (!CollectionUtils.isEmpty(lstPedidoItem)) {
+
+				for (int i = 0; i <= lstPedidoItem.size() - 1; i++) {
+
+					PedidoItemRecords ItemRecords = new PedidoItemRecords(lstPedidoItem.get(i).idItemPedido,
+							lstPedidoItem.get(i).idProduto, lstPedidoItem.get(i).qtde);
+
+					ItensRecords.add(ItemRecords);
+
+				}
+
+			}
+
+			return new PedidoRecords(optPedidoJpa.get().idPedido, optPedidoJpa.get().idCliente, ItensRecords);
 
 		}
 
@@ -44,23 +72,76 @@ public class PedidoServiceImpl implements PedidoService {
 	@Override
 	public PedidoRecords CriarPedido(PedidoRecords objCriarPedido) {
 
-		try {
+		PedidoJpa pedidoJpa = new PedidoJpa();
+		pedidoJpa.idCliente = objCriarPedido.idCliente();
 
-			ProdutoReqCompra reqcompra = new ProdutoReqCompra(1, 1);
-			this.estoque.removerEstoque(reqcompra);
+		PedidoJpa savedPedidoJpa = repositoryPedido.save(pedidoJpa);
 
-		} catch (Exception e) {
+		for (int x = 0; x <= objCriarPedido.itemPedido().size() - 1; x++) {
 
-			throw new UnsupportedOperationException("Fora de Estoque");
+			PedidoItemJpa itemJpa = new PedidoItemJpa();
+
+			itemJpa.pedido = savedPedidoJpa;
+			itemJpa.idProduto = objCriarPedido.itemPedido().get(x).idProduto();
+			itemJpa.qtde = objCriarPedido.itemPedido().get(x).qtde();
+
+			estoque.removerEstoque(new ProdutoReqCompra(objCriarPedido.itemPedido().get(x).idProduto(),
+					objCriarPedido.itemPedido().get(x).qtde()));
+
+			repositoryItemPedido.save(itemJpa);
+
 		}
 
-		return null;
+		entrega.entregaPedido(new EntregaPedidoCliente(savedPedidoJpa.idPedido, savedPedidoJpa.idCliente));
+
+		return BuscarPedidoPorId(savedPedidoJpa.idPedido);
+
 	}
 
 	@Override
 	public List<PedidoRecords> ListarPedidos() {
-		
-		return null;
+
+		List<PedidoJpa> lstPedidosJpa = repositoryPedido.findAll();
+
+		if (!CollectionUtils.isEmpty(lstPedidosJpa)) {
+
+			return null;
+
+		} else {
+
+			List<PedidoRecords> lstPedidosRecords = new ArrayList<>();
+
+			for (int x = 0; x <= lstPedidosJpa.size() - 1; x++) {
+
+				List<PedidoItemJpa> lstItensDePedidoJpa = repositoryItemPedido
+						.BuscarItemsPedidoPorIdPedido(lstPedidosJpa.get(x).idPedido);
+
+				List<PedidoItemRecords> ItensDePedidoRecords = new ArrayList<>();
+
+				if (!CollectionUtils.isEmpty(lstItensDePedidoJpa)) {
+
+					for (int i = 0; i <= lstItensDePedidoJpa.size() - 1; i++) {
+
+						PedidoItemRecords ItemDePedidoRecord = new PedidoItemRecords(
+								lstItensDePedidoJpa.get(i).idItemPedido, lstItensDePedidoJpa.get(i).idProduto,
+								lstItensDePedidoJpa.get(i).qtde);
+
+						ItensDePedidoRecords.add(ItemDePedidoRecord);
+
+					}
+
+				}
+
+				PedidoRecords PedidoRecords = new PedidoRecords(lstPedidosJpa.get(x).idPedido,
+						lstPedidosJpa.get(x).idCliente, ItensDePedidoRecords);
+
+				lstPedidosRecords.add(PedidoRecords);
+
+			}
+
+			return lstPedidosRecords;
+
+		}
 	}
 
 }
